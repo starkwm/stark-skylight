@@ -1,16 +1,6 @@
 import CoreGraphics
 import Foundation
 
-/// Injectable read-only queries for consumers. Calls are confined to the main actor.
-@MainActor
-public protocol SpaceQuerying {
-  func snapshot() throws -> SpaceSnapshot
-  func activeSpace() throws -> SpaceID?
-  func currentSpace(for displayID: DisplayID) throws -> SpaceID?
-  func spaceType(for spaceID: SpaceID) throws -> SpaceType
-  func spaceIDs(containing windowID: CGWindowID) throws -> [SpaceID]
-}
-
 @MainActor
 public final class SpaceClient: SpaceQuerying {
   private let backend: any SpaceBackend
@@ -53,6 +43,16 @@ public final class SpaceClient: SpaceQuerying {
     guard windowID != 0 else { throw SkyLightError.invalidArgument("windowID") }
     return try SpaceParser.identifiers(backend.spacesForWindow(windowID))
   }
+}
+
+/// Injectable read-only queries for consumers. Calls are confined to the main actor.
+@MainActor
+public protocol SpaceQuerying {
+  func snapshot() throws -> SpaceSnapshot
+  func activeSpace() throws -> SpaceID?
+  func currentSpace(for displayID: DisplayID) throws -> SpaceID?
+  func spaceType(for spaceID: SpaceID) throws -> SpaceType
+  func spaceIDs(containing windowID: CGWindowID) throws -> [SpaceID]
 }
 
 @MainActor
