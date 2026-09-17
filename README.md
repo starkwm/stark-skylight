@@ -4,6 +4,8 @@ Swift utilities for read-only WindowServer Space queries, including display Spac
 
 Requires Swift 6.2 and macOS 26. Uses private macOS APIs that may change between releases.
 
+See the [documentation](docs/index.md) for an overview and the [API reference](docs/index.md#api-reference) for query methods, data types and errors.
+
 ## Usage
 
 Add `https://github.com/starkwm/stark-skylight.git` as a Swift package dependency and link the `StarkSkyLight` product to your target.
