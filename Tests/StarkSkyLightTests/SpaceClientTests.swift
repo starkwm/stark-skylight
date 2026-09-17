@@ -11,7 +11,9 @@ struct SpaceClientTests {
       display("A", ids: [1, 2], current: 2), display("Main", ids: [3], current: 3),
     ]
     backend.active = 3
+
     let snapshot = try SpaceClient(backend: backend).snapshot()
+
     #expect(snapshot.allSpaceIDs == [1, 2, 3].map { SpaceID(rawValue: $0) })
     #expect(snapshot.visibleSpaceIDs == [SpaceID(rawValue: 2), SpaceID(rawValue: 3)])
     #expect(snapshot.activeSpaceID == SpaceID(rawValue: 3))
@@ -23,13 +25,18 @@ struct SpaceClientTests {
   @Test func missingAndTransitionStateRemainsExplicit() throws {
     let backend = StubBackend()
     let client = SpaceClient(backend: backend)
+
     #expect(try client.activeSpace() == nil)
     #expect(try client.currentSpace(for: DisplayID(rawValue: "missing")) == nil)
     #expect(try !client.snapshot().isComplete)
+
     backend.displays = [display("Main", ids: [1], current: 2)]
     backend.active = 1
+
     #expect(try !client.snapshot().isComplete)
+
     backend.displays = [["Display Identifier": "Main", "Spaces": [["id64": 1, "type": 0]]]]
+
     #expect(try client.snapshot().displays[0].currentSpaceID == nil)
   }
 
@@ -37,16 +44,20 @@ struct SpaceClientTests {
     let backend = StubBackend()
     backend.membership = [NSNumber(value: UInt64.max), 3, 3, 1]
     let client = SpaceClient(backend: backend)
+
     #expect(
       try client.spaceIDs(containing: 42) == [UInt64.max, 3, 1].map { SpaceID(rawValue: $0) }
     )
     #expect(backend.queriedWindow == 42)
+
     backend.membership = []
+
     #expect(try client.spaceIDs(containing: 42).isEmpty)
   }
 
   @Test func invalidNumbersAreRejected() {
     let invalid: [Any] = [true, -1, 0, 1.5, "12", NSNull(), Double.infinity, Double.nan]
+
     for value in invalid {
       #expect(throws: SkyLightError.self) { try SpaceParser.identifiers([value]) }
     }
@@ -67,6 +78,7 @@ struct SpaceClientTests {
       [display("Main", ids: [1], current: 1), display("Main", ids: [2], current: 2)],
       [["Display Identifier": "Main", "Spaces": [["id64": 1, "ManagedSpaceID": 2, "type": 0]]]],
     ]
+
     for value in bad {
       #expect(throws: SkyLightError.self) { try SpaceParser.displays(value) }
     }
@@ -82,14 +94,20 @@ struct SpaceClientTests {
         ],
       ]
     ]
+
     let parsed = try SpaceParser.displays(values)
+
     #expect(parsed[0].spaces[0].id.rawValue == UInt64.max)
     #expect(parsed[0].spaces[0].type == .unknown(19))
+
     let backend = StubBackend()
     backend.type = 19
     let client = SpaceClient(backend: backend)
+
     #expect(try client.spaceType(for: SpaceID(rawValue: 1)) == .unknown(19))
+
     backend.type = -1
+
     #expect(throws: SkyLightError.queryFailed("SLSSpaceGetType")) {
       try client.spaceType(for: SpaceID(rawValue: 1))
     }
@@ -99,6 +117,7 @@ struct SpaceClientTests {
     let backend = StubBackend()
     backend.failure = .connectionUnavailable
     let client = SpaceClient(backend: backend)
+
     #expect(throws: SkyLightError.connectionUnavailable) { try client.snapshot() }
     #expect(throws: SkyLightError.connectionUnavailable) { try client.activeSpace() }
     #expect(throws: SkyLightError.connectionUnavailable) {
@@ -108,6 +127,7 @@ struct SpaceClientTests {
       try client.spaceType(for: SpaceID(rawValue: 1))
     }
     #expect(throws: SkyLightError.connectionUnavailable) { try client.spaceIDs(containing: 1) }
+
     #expect(throws: SkyLightError.invalidArgument("windowID")) {
       try client.spaceIDs(containing: 0)
     }
@@ -139,27 +159,33 @@ private final class StubBackend: SpaceBackend {
 
   func displaySpaces() throws -> [Any] {
     if let failure { throw failure }
+
     return displays
   }
 
   func activeSpace() throws -> UInt64 {
     if let failure { throw failure }
+
     return active
   }
 
   func currentSpace(_ display: String) throws -> UInt64 {
     if let failure { throw failure }
+
     return active
   }
 
   func spaceType(_ space: UInt64) throws -> Int32 {
     if let failure { throw failure }
+
     return type
   }
 
   func spacesForWindow(_ window: UInt32) throws -> [Any] {
     if let failure { throw failure }
+
     queriedWindow = window
+
     return membership
   }
 }

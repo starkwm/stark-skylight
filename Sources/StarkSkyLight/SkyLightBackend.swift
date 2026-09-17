@@ -20,6 +20,7 @@ final class SkyLightBackend: SpaceBackend {
 
   init() throws {
     let library = try DynamicLibrary()
+
     self.library = library
     connection = try library.load("SLSMainConnectionID")
     copyDisplays = try library.load("SLSCopyManagedDisplaySpaces")
@@ -27,6 +28,7 @@ final class SkyLightBackend: SpaceBackend {
     getCurrent = try library.load("SLSManagedDisplayGetCurrentSpace")
     getType = try library.load("SLSSpaceGetType")
     copySpaces = try library.load("SLSCopySpacesForWindows")
+
     _ = try connectionID()
   }
 
@@ -34,6 +36,7 @@ final class SkyLightBackend: SpaceBackend {
     guard let result = copyDisplays(try connectionID())?.takeRetainedValue() else {
       throw SkyLightError.queryFailed("SLSCopyManagedDisplaySpaces")
     }
+
     return result as [AnyObject]
   }
 
@@ -49,12 +52,15 @@ final class SkyLightBackend: SpaceBackend {
     // Selector 0x7 includes all Space kinds. Copy functions return owned CF objects.
     guard let result = copySpaces(try connectionID(), 0x7, [window] as CFArray)?.takeRetainedValue()
     else { throw SkyLightError.queryFailed("SLSCopySpacesForWindows") }
+
     return result as [AnyObject]
   }
 
   private func connectionID() throws -> Int32 {
     let value = connection()
+
     guard value != 0 else { throw SkyLightError.connectionUnavailable }
+
     return value
   }
 }
@@ -72,8 +78,10 @@ private final class DynamicLibrary {
       )
     else {
       let detail = dlerror().map { String(cString: $0) } ?? "unknown loader error"
+
       throw SkyLightError.frameworkUnavailable(detail)
     }
+
     self.handle = handle
   }
 
@@ -81,6 +89,7 @@ private final class DynamicLibrary {
 
   func load<T>(_ name: String) throws -> T {
     guard let pointer = dlsym(handle, name) else { throw SkyLightError.symbolUnavailable(name) }
+
     return unsafeBitCast(pointer, to: T.self)
   }
 }

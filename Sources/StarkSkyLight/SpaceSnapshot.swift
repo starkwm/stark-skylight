@@ -6,6 +6,7 @@ public struct SpaceSnapshot: Equatable, Sendable {
 
   public var allSpaceIDs: [SpaceID] {
     var seen = Set<SpaceID>()
+
     return displays.flatMap(\.spaces).map(\.id).filter { seen.insert($0).inserted }
   }
 
@@ -16,8 +17,10 @@ public struct SpaceSnapshot: Equatable, Sendable {
     guard let activeSpaceID, allSpaceIDs.contains(activeSpaceID), !displays.isEmpty else {
       return false
     }
+
     return displays.allSatisfy { display in
       guard let current = display.currentSpaceID else { return false }
+
       return display.spaces.contains { $0.id == current }
     }
   }
