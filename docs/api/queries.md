@@ -13,6 +13,7 @@ import StarkSkyLight
 func readSpaces() throws {
   let client = try SpaceClient()
   let snapshot = try client.snapshot()
+
   print(snapshot.activeSpaceID as Any)
 }
 ```
@@ -38,6 +39,7 @@ let activeSpace = try client.activeSpace()
 
 for display in snapshot.displays {
   let currentSpace = try client.currentSpace(for: display.id)
+
   print(display.id.rawValue, currentSpace as Any)
 }
 ```
@@ -51,6 +53,7 @@ Use a `DisplayID` from a snapshot. An unknown display or a Space transition can 
 ```swift
 if let spaceID = try client.activeSpace() {
   let type = try client.spaceType(for: spaceID)
+
   print(type)
 }
 ```
@@ -71,7 +74,7 @@ An empty array means WindowServer reported no membership, including when the win
 
 A zero window identifier throws `SkyLightError.invalidArgument("windowID")`. Invalid identifiers in the response throw `malformedResponse`.
 
-## Test query consumers
+## Test application code
 
 Accept `any SpaceQuerying` in application code to supply a test implementation without a desktop connection:
 

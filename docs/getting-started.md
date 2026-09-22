@@ -25,6 +25,7 @@ import StarkSkyLight
 func readSpaces() throws {
   let client = try SpaceClient()
   let snapshot = try client.snapshot()
+
   guard snapshot.isComplete else { return }
 
   for display in snapshot.displays {
