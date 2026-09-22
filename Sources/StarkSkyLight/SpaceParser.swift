@@ -1,6 +1,6 @@
 import Foundation
 
-/// Reject corrupt entries rather than silently returning an apparently complete subset.
+/// Throws on invalid entries so a partial response cannot appear complete.
 enum SpaceParser {
   static func displays(_ values: [Any]) throws -> [DisplaySpaces] {
     var seen = Set<DisplayID>()
@@ -20,6 +20,7 @@ enum SpaceParser {
       }
 
       var seenSpaces = Set<SpaceID>()
+
       let spaces = try rawSpaces.enumerated().map { offset, raw -> Space in
         let spacePath = "\(path).Spaces[\(offset)]"
 
@@ -30,7 +31,7 @@ enum SpaceParser {
         let id = try identifier(entry, path: spacePath)
 
         guard seenSpaces.insert(id).inserted,
-          let type = integer(entry["type"]).flatMap(Int32.init), type >= 0
+          let type = numberText(entry["type"]).flatMap(Int32.init), type >= 0
         else { throw SkyLightError.malformedResponse(spacePath) }
 
         return Space(id: id, type: SpaceType(rawValue: type))
@@ -54,7 +55,7 @@ enum SpaceParser {
     var seen = Set<SpaceID>()
 
     return try values.enumerated().compactMap { index, value in
-      guard let raw = integer(value).flatMap(UInt64.init), raw > 0 else {
+      guard let raw = numberText(value).flatMap(UInt64.init), raw > 0 else {
         throw SkyLightError.malformedResponse("spaces[\(index)]")
       }
 
@@ -65,25 +66,27 @@ enum SpaceParser {
   }
 
   private static func identifier(_ entry: [String: Any], path: String) throws -> SpaceID {
-    // Both spellings are emitted by WindowServer. If both exist, they must agree.
-    let keys = ["ManagedSpaceID", "id64"].filter { entry[$0] != nil }
+    // WindowServer uses both keys. If both exist, they must agree.
+    var id: UInt64?
 
-    guard !keys.isEmpty else { throw SkyLightError.malformedResponse(path) }
-
-    let values = try keys.map { key -> UInt64 in
-      guard let value = integer(entry[key]).flatMap(UInt64.init), value > 0 else {
+    for key in ["ManagedSpaceID", "id64"] where entry[key] != nil {
+      guard let value = numberText(entry[key]).flatMap(UInt64.init), value > 0 else {
         throw SkyLightError.malformedResponse("\(path).\(key)")
       }
 
-      return value
+      if let id, id != value {
+        throw SkyLightError.malformedResponse(path)
+      }
+
+      id = value
     }
 
-    guard Set(values).count == 1 else { throw SkyLightError.malformedResponse(path) }
+    guard let id else { throw SkyLightError.malformedResponse(path) }
 
-    return SpaceID(rawValue: values[0])
+    return SpaceID(rawValue: id)
   }
 
-  private static func integer(_ value: Any?) -> String? {
+  private static func numberText(_ value: Any?) -> String? {
     guard let number = value as? NSNumber,
       CFGetTypeID(number) != CFBooleanGetTypeID()
     else { return nil }

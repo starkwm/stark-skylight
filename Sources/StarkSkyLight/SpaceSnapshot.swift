@@ -1,6 +1,7 @@
-/// A point-in-time observation. WindowServer queries are not atomic.
+/// Space lists and focus state from separate WindowServer queries.
 public struct SpaceSnapshot: Equatable, Sendable {
   public let displays: [DisplaySpaces]
+
   /// The focused Space, distinct from the current Space on each display.
   public let activeSpaceID: SpaceID?
 
@@ -12,9 +13,9 @@ public struct SpaceSnapshot: Equatable, Sendable {
 
   public var visibleSpaceIDs: Set<SpaceID> { Set(displays.compactMap(\.currentSpaceID)) }
 
-  /// False when current/focused IDs are missing or absent from the copied Space lists.
+  /// True when current and focused IDs are present in the copied Space lists.
   public var isComplete: Bool {
-    guard let activeSpaceID, allSpaceIDs.contains(activeSpaceID), !displays.isEmpty else {
+    guard let activeSpaceID, displayID(containing: activeSpaceID) != nil else {
       return false
     }
 
@@ -77,8 +78,10 @@ public struct Space: Equatable, Sendable, Identifiable {
 
 public struct DisplaySpaces: Equatable, Sendable, Identifiable {
   public let id: DisplayID
+
   /// WindowServer order, including fullscreen Spaces.
   public let spaces: [Space]
+
   /// Nil when WindowServer does not report a current Space.
   public let currentSpaceID: SpaceID?
 

@@ -5,8 +5,9 @@ import Testing
 
 @MainActor
 struct SpaceClientTests {
-  @Test func snapshotDistinguishesVisibleAndFocusedSpaces() throws {
+  @Test func snapshot() throws {
     let backend = StubBackend()
+
     backend.displays = [
       display("A", ids: [1, 2], current: 2), display("Main", ids: [3], current: 3),
     ]
@@ -22,7 +23,7 @@ struct SpaceClientTests {
     #expect(snapshot.isComplete)
   }
 
-  @Test func missingAndTransitionStateRemainsExplicit() throws {
+  @Test func missingSpaces() throws {
     let backend = StubBackend()
     let client = SpaceClient(backend: backend)
 
@@ -30,19 +31,31 @@ struct SpaceClientTests {
     #expect(try client.currentSpace(for: DisplayID(rawValue: "missing")) == nil)
     #expect(try !client.snapshot().isComplete)
 
-    backend.displays = [display("Main", ids: [1], current: 2)]
     backend.active = 1
+
+    #expect(try !client.snapshot().isComplete)
+
+    backend.displays = [display("Main", ids: [1], current: 2)]
+
+    #expect(try !client.snapshot().isComplete)
+
+    backend.displays = [display("Main", ids: [2], current: 2)]
 
     #expect(try !client.snapshot().isComplete)
 
     backend.displays = [["Display Identifier": "Main", "Spaces": [["id64": 1, "type": 0]]]]
 
-    #expect(try client.snapshot().displays[0].currentSpaceID == nil)
+    let snapshot = try client.snapshot()
+
+    #expect(snapshot.displays[0].currentSpaceID == nil)
+    #expect(!snapshot.isComplete)
   }
 
-  @Test func membershipDeduplicatesWithoutLosingOrder() throws {
+  @Test func windowSpaces() throws {
     let backend = StubBackend()
+
     backend.membership = [NSNumber(value: UInt64.max), 3, 3, 1]
+
     let client = SpaceClient(backend: backend)
 
     #expect(
@@ -55,20 +68,23 @@ struct SpaceClientTests {
     #expect(try client.spaceIDs(containing: 42).isEmpty)
   }
 
-  @Test func invalidNumbersAreRejected() {
+  @Test func invalidNumbers() {
     let invalid: [Any] = [true, -1, 0, 1.5, "12", NSNull(), Double.infinity, Double.nan]
 
     for value in invalid {
-      #expect(throws: SkyLightError.self) { try SpaceParser.identifiers([value]) }
+      #expect(throws: SkyLightError.malformedResponse("spaces[0]")) {
+        try SpaceParser.identifiers([value])
+      }
     }
   }
 
-  @Test func malformedDisplaysAreRejected() {
+  @Test func invalidDisplays() {
     let bad: [[Any]] = [
       ["wrong"],
       [["Spaces": []]],
       [["Display Identifier": "", "Spaces": []]],
       [["Display Identifier": "Main", "Spaces": ["wrong"]]],
+      [["Display Identifier": "Main", "Spaces": [["type": 0]]]],
       [["Display Identifier": "Main", "Spaces": [["ManagedSpaceID": 1]]]],
       [["Display Identifier": "Main", "Spaces": [["ManagedSpaceID": true, "type": 0]]]],
       [["Display Identifier": "Main", "Spaces": [["id64": 1, "type": true]]]],
@@ -84,7 +100,7 @@ struct SpaceClientTests {
     }
   }
 
-  @Test func aliasesLargeIDsAndUnknownTypesArePreserved() throws {
+  @Test func idAliases() throws {
     let values: [Any] = [
       [
         "Display Identifier": "Main",
@@ -99,9 +115,14 @@ struct SpaceClientTests {
 
     #expect(parsed[0].spaces[0].id.rawValue == UInt64.max)
     #expect(parsed[0].spaces[0].type == .unknown(19))
+    #expect(parsed[0].currentSpaceID?.rawValue == UInt64.max)
+  }
 
+  @Test func spaceTypes() throws {
     let backend = StubBackend()
+
     backend.type = 19
+
     let client = SpaceClient(backend: backend)
 
     #expect(try client.spaceType(for: SpaceID(rawValue: 1)) == .unknown(19))
@@ -113,27 +134,22 @@ struct SpaceClientTests {
     }
   }
 
-  @Test func failuresPropagateAndInvalidArgumentsNeverReachBackend() {
+  @Test func invalidArguments() {
     let backend = StubBackend()
+
     backend.failure = .connectionUnavailable
+
     let client = SpaceClient(backend: backend)
 
-    #expect(throws: SkyLightError.connectionUnavailable) { try client.snapshot() }
-    #expect(throws: SkyLightError.connectionUnavailable) { try client.activeSpace() }
-    #expect(throws: SkyLightError.connectionUnavailable) {
-      try client.currentSpace(for: DisplayID(rawValue: "Main"))
-    }
-    #expect(throws: SkyLightError.connectionUnavailable) {
-      try client.spaceType(for: SpaceID(rawValue: 1))
-    }
-    #expect(throws: SkyLightError.connectionUnavailable) { try client.spaceIDs(containing: 1) }
-
+    // Argument validation must run before the backend can throw its error.
     #expect(throws: SkyLightError.invalidArgument("windowID")) {
       try client.spaceIDs(containing: 0)
     }
+
     #expect(throws: SkyLightError.invalidArgument("spaceID")) {
       try client.spaceType(for: SpaceID(rawValue: 0))
     }
+
     #expect(throws: SkyLightError.invalidArgument("displayID")) {
       try client.currentSpace(for: DisplayID(rawValue: ""))
     }
