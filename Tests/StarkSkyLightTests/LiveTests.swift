@@ -24,8 +24,10 @@ struct LiveTests {
     let windows =
       CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], 0)
       as? [[String: Any]] ?? []
-    let window = try #require(windows.first?[kCGWindowNumber as String] as? UInt32)
 
+    // System overlays can be onscreen without belonging to a Space.
+    let info = windows.first { $0[kCGWindowLayer as String] as? Int == 0 }
+    let window = try #require(info?[kCGWindowNumber as String] as? UInt32)
     let membership = try client.spaceIDs(containing: window)
 
     #expect(!membership.isEmpty)
