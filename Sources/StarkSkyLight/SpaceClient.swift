@@ -1,5 +1,4 @@
 import CoreGraphics
-import Foundation
 
 @MainActor
 public final class SpaceClient: SpaceQuerying {
@@ -18,7 +17,7 @@ public final class SpaceClient: SpaceQuerying {
     return SpaceSnapshot(displays: displays, activeSpaceID: try activeSpace())
   }
 
-  /// Zero from WindowServer means unavailable and is returned as nil.
+  /// Returns nil when WindowServer reports zero.
   public func activeSpace() throws -> SpaceID? {
     let raw = try backend.activeSpace()
 
@@ -53,7 +52,7 @@ public final class SpaceClient: SpaceQuerying {
   }
 }
 
-/// Injectable read-only queries for consumers. Calls are confined to the main actor.
+/// Read-only Space queries. Implement this protocol to supply test data to consumers.
 @MainActor
 public protocol SpaceQuerying {
   func snapshot() throws -> SpaceSnapshot

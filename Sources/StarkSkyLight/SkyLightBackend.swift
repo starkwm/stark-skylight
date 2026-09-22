@@ -65,8 +65,7 @@ final class SkyLightBackend: SpaceBackend {
   }
 }
 
-/// Owns the dlopen reference even if symbol resolution or connection setup throws.
-/// No function pointer escapes the backend that retains this object.
+/// Closes the library when the backend is released or initialization fails.
 private final class DynamicLibrary {
   private let handle: UnsafeMutableRawPointer
 
