@@ -3,9 +3,13 @@ import Foundation
 import StarkSkyLight
 import Testing
 
+@Suite("SpaceClient")
 @MainActor
-struct LiveTests {
-  @Test(.enabled(if: ProcessInfo.processInfo.environment["STARK_SKYLIGHT_LIVE"] == "1"))
+struct SpaceClientLiveTests {
+  @Test(
+    "snapshot: reads the current desktop",
+    .enabled(if: ProcessInfo.processInfo.environment["STARK_SKYLIGHT_LIVE"] == "1")
+  )
   func readDesktop() throws {
     let client = try SpaceClient()
     let snapshot = try client.snapshot()

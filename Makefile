@@ -11,7 +11,7 @@ test:
 	@swift test --parallel --disable-xctest
 
 live:
-	@STARK_SKYLIGHT_LIVE=1 swift test --disable-xctest --filter LiveTests
+	@STARK_SKYLIGHT_LIVE=1 swift test --disable-xctest --filter SpaceClientLiveTests
 
 clean:
 	@swift package clean

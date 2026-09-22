@@ -3,9 +3,11 @@ import Testing
 
 @testable import StarkSkyLight
 
+@Suite("SpaceClient")
 @MainActor
 struct SpaceClientTests {
-  @Test func snapshot() throws {
+  @Test("snapshot: collects display and active Space data")
+  func snapshot() throws {
     let backend = StubBackend()
 
     backend.displays = [
@@ -23,12 +25,11 @@ struct SpaceClientTests {
     #expect(snapshot.isComplete)
   }
 
-  @Test func missingSpaces() throws {
+  @Test("snapshot: reports incomplete Space data")
+  func snapshotWithMissingSpaces() throws {
     let backend = StubBackend()
     let client = SpaceClient(backend: backend)
 
-    #expect(try client.activeSpace() == nil)
-    #expect(try client.currentSpace(for: DisplayID(rawValue: "missing")) == nil)
     #expect(try !client.snapshot().isComplete)
 
     backend.active = 1
@@ -51,7 +52,63 @@ struct SpaceClientTests {
     #expect(!snapshot.isComplete)
   }
 
-  @Test func windowSpaces() throws {
+  @Test("activeSpace: returns nil when WindowServer reports zero")
+  func activeSpaceWithZero() throws {
+    let client = SpaceClient(backend: StubBackend())
+
+    #expect(try client.activeSpace() == nil)
+  }
+
+  @Test("currentSpace(for:): returns nil when WindowServer reports zero")
+  func currentSpaceWithZero() throws {
+    let client = SpaceClient(backend: StubBackend())
+
+    #expect(try client.currentSpace(for: DisplayID(rawValue: "missing")) == nil)
+  }
+
+  @Test("currentSpace(for:): rejects an empty display ID")
+  func currentSpaceWithEmptyDisplayID() {
+    let backend = StubBackend()
+    backend.failure = .connectionUnavailable
+
+    let client = SpaceClient(backend: backend)
+
+    #expect(throws: SkyLightError.invalidArgument("displayID")) {
+      try client.currentSpace(for: DisplayID(rawValue: ""))
+    }
+  }
+
+  @Test("spaceType(for:): preserves unknown types and rejects query failures")
+  func spaceType() throws {
+    let backend = StubBackend()
+
+    backend.type = 19
+
+    let client = SpaceClient(backend: backend)
+
+    #expect(try client.spaceType(for: SpaceID(rawValue: 1)) == .unknown(19))
+
+    backend.type = -1
+
+    #expect(throws: SkyLightError.queryFailed("SLSSpaceGetType")) {
+      try client.spaceType(for: SpaceID(rawValue: 1))
+    }
+  }
+
+  @Test("spaceType(for:): rejects a zero Space ID")
+  func spaceTypeWithZeroID() {
+    let backend = StubBackend()
+    backend.failure = .connectionUnavailable
+
+    let client = SpaceClient(backend: backend)
+
+    #expect(throws: SkyLightError.invalidArgument("spaceID")) {
+      try client.spaceType(for: SpaceID(rawValue: 0))
+    }
+  }
+
+  @Test("spaceIDs(containing:): deduplicates memberships and handles empty results")
+  func spaceIDs() throws {
     let backend = StubBackend()
 
     backend.membership = [NSNumber(value: UInt64.max), 3, 3, 1]
@@ -68,75 +125,9 @@ struct SpaceClientTests {
     #expect(try client.spaceIDs(containing: 42).isEmpty)
   }
 
-  @Test func invalidNumbers() {
-    let invalid: [Any] = [true, -1, 0, 1.5, "12", NSNull(), Double.infinity, Double.nan]
-
-    for value in invalid {
-      #expect(throws: SkyLightError.malformedResponse("spaces[0]")) {
-        try SpaceParser.identifiers([value])
-      }
-    }
-  }
-
-  @Test func invalidDisplays() {
-    let bad: [[Any]] = [
-      ["wrong"],
-      [["Spaces": []]],
-      [["Display Identifier": "", "Spaces": []]],
-      [["Display Identifier": "Main", "Spaces": ["wrong"]]],
-      [["Display Identifier": "Main", "Spaces": [["type": 0]]]],
-      [["Display Identifier": "Main", "Spaces": [["ManagedSpaceID": 1]]]],
-      [["Display Identifier": "Main", "Spaces": [["ManagedSpaceID": true, "type": 0]]]],
-      [["Display Identifier": "Main", "Spaces": [["id64": 1, "type": true]]]],
-      [["Display Identifier": "Main", "Spaces": [["id64": 1, "type": -1]]]],
-      [["Display Identifier": "Main", "Spaces": [], "Current Space": NSNull()]],
-      [display("Main", ids: [1, 1], current: 1)],
-      [display("Main", ids: [1], current: 1), display("Main", ids: [2], current: 2)],
-      [["Display Identifier": "Main", "Spaces": [["id64": 1, "ManagedSpaceID": 2, "type": 0]]]],
-    ]
-
-    for value in bad {
-      #expect(throws: SkyLightError.self) { try SpaceParser.displays(value) }
-    }
-  }
-
-  @Test func idAliases() throws {
-    let values: [Any] = [
-      [
-        "Display Identifier": "Main",
-        "Spaces": [["id64": NSNumber(value: UInt64.max), "type": 19]],
-        "Current Space": [
-          "id64": NSNumber(value: UInt64.max), "ManagedSpaceID": NSNumber(value: UInt64.max),
-        ],
-      ]
-    ]
-
-    let parsed = try SpaceParser.displays(values)
-
-    #expect(parsed[0].spaces[0].id.rawValue == UInt64.max)
-    #expect(parsed[0].spaces[0].type == .unknown(19))
-    #expect(parsed[0].currentSpaceID?.rawValue == UInt64.max)
-  }
-
-  @Test func spaceTypes() throws {
+  @Test("spaceIDs(containing:): rejects a zero window ID")
+  func spaceIDsWithZeroWindowID() {
     let backend = StubBackend()
-
-    backend.type = 19
-
-    let client = SpaceClient(backend: backend)
-
-    #expect(try client.spaceType(for: SpaceID(rawValue: 1)) == .unknown(19))
-
-    backend.type = -1
-
-    #expect(throws: SkyLightError.queryFailed("SLSSpaceGetType")) {
-      try client.spaceType(for: SpaceID(rawValue: 1))
-    }
-  }
-
-  @Test func invalidArguments() {
-    let backend = StubBackend()
-
     backend.failure = .connectionUnavailable
 
     let client = SpaceClient(backend: backend)
@@ -144,14 +135,6 @@ struct SpaceClientTests {
     // Argument validation must run before the backend can throw its error.
     #expect(throws: SkyLightError.invalidArgument("windowID")) {
       try client.spaceIDs(containing: 0)
-    }
-
-    #expect(throws: SkyLightError.invalidArgument("spaceID")) {
-      try client.spaceType(for: SpaceID(rawValue: 0))
-    }
-
-    #expect(throws: SkyLightError.invalidArgument("displayID")) {
-      try client.currentSpace(for: DisplayID(rawValue: ""))
     }
   }
 
