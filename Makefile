@@ -1,3 +1,5 @@
+TEST_ARGS ?=
+
 build:
 	@swift build
 
@@ -8,7 +10,7 @@ lint:
 	@swift format lint --strict -r Sources Tests Package.swift
 
 test:
-	@swift test --parallel --disable-xctest
+	@swift test --parallel --disable-xctest $(TEST_ARGS)
 
 live:
 	@STARK_SKYLIGHT_LIVE=1 swift test --disable-xctest --filter SpaceClientLiveTests
