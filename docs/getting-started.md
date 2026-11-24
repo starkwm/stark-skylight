@@ -5,7 +5,7 @@
 ## Requirements
 
 - macOS 26 or later
-- Swift 6.2 or later
+- Swift 6.4 or later
 - A logged-in macOS desktop when using `SpaceClient`
 
 StarkSkyLight uses private SkyLight APIs. A macOS update may change behavior that it relies on.

@@ -2,7 +2,7 @@
 
 Swift utilities for read-only WindowServer Space queries, including display Spaces, the focused Space and window membership.
 
-Requires Swift 6.2 and macOS 26. Uses private macOS APIs that may change between releases.
+Requires Swift 6.4 or later and macOS 26 or later. Uses private macOS APIs that may change between releases.
 
 See the [documentation](docs/index.md) for an overview and the [API reference](docs/index.md#api-reference) for query methods, data types and errors.
 
